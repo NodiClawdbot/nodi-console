@@ -1,0 +1,169 @@
+<main class="wrap">
+  <header class="top">
+    <div class="title">nodi-clawdbot</div>
+    <div class="muted">Status: {{ status }}</div>
+
+    <div class="topRight">
+      <div class="modeToggle" role="radiogroup" aria-label="Svarsläge">
+        <button type="button" class="small" [class.active]="voiceMode === 'walkietalki'" (click)="setVoiceMode('walkietalki')">
+          WalkiTalki
+        </button>
+        <button type="button" class="small" [class.active]="voiceMode === 'silentchat'" (click)="setVoiceMode('silentchat')">
+          silentchat
+        </button>
+      </div>
+      <div class="modeHelp muted">
+        <span *ngIf="voiceMode === 'walkietalki'">WalkiTalki: PTT + TTS</span>
+        <span *ngIf="voiceMode === 'silentchat'">silentchat: Endast text</span>
+      </div>
+
+      <button
+        type="button"
+        class="themeIndicator"
+        (click)="toggleSettings()"
+        [attr.aria-label]="'Tema: ' + (theme === 'auto' ? ('Auto (effektiv: ' + (effectiveTheme === 'dark' ? 'Dark' : 'Light') + ')') : (theme === 'dark' ? 'Dark' : 'Light'))"
+        [attr.data-effective]="effectiveTheme"
+        [attr.data-mode]="theme"
+        title="Tema"
+      >
+        <span class="themeIndicator__mode" aria-hidden="true">{{ theme === 'auto' ? 'A' : (theme === 'dark' ? 'D' : 'L') }}</span>
+        <span class="themeIndicator__effective" aria-hidden="true"></span>
+        <span class="themeIndicator__text">{{ theme === 'auto' ? 'Auto' : (theme === 'dark' ? 'Dark' : 'Light') }}</span>
+      </button>
+
+      <button type="button" class="iconBtn" (click)="toggleSettings()" aria-label="Inställningar" title="Inställningar">⚙︎</button>
+
+    </div>
+  </header>
+
+  <section class="settings" *ngIf="showSettings">
+    <div class="card">
+      <div class="row">
+        <div class="label">Tema</div>
+        <select class="small" [(ngModel)]="theme" (ngModelChange)="setTheme($event)" aria-label="Tema">
+          <option value="auto">Auto (enhet)</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="label">TTS-röst</div>
+        <select class="small" [disabled]="voiceMode !== 'walkietalki'" [value]="ttsVoice" (change)="setTtsVoice(($any($event.target).value))" aria-label="TTS röst">
+          <option value="nova">nova</option>
+          <option value="alloy">alloy</option>
+          <option value="shimmer">shimmer</option>
+          <option value="echo">echo</option>
+          <option value="fable">fable</option>
+          <option value="onyx">onyx</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <button type="button" class="small" (click)="newSession(); toggleSettings()" aria-label="Ny session">Ny session</button>
+        <button type="button" class="small" (click)="stopTts()" [disabled]="!playingTts" aria-label="Avbryt uppläsning">Avbryt uppläsning</button>
+        <button type="button" class="small" (click)="toggleSettings()">Stäng</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="chat">
+    <div class="messages">
+      <div class="msg" *ngFor="let m of messages" [class.me]="m.from === 'you'" [class.system]="m.from === 'system'" [class.nodi]="m.from !== 'you' && m.from !== 'system'">
+        <div class="meta">
+          <span class="at">{{ m.at }}</span>
+          <span class="from">{{ m.from }}</span>
+        </div>
+
+        <!-- Render markdown for non-user messages (e.g. Obsidian content). -->
+        <div class="text md" *ngIf="m.from !== 'you'" [innerHTML]="renderMarkdown(m.text)"></div>
+        <div class="text" *ngIf="m.from === 'you'">{{ m.text }}</div>
+      </div>
+      <div class="muted" *ngIf="messages.length === 0">Inga meddelanden ännu.</div>
+    </div>
+
+    <form class="composer" (submit)="$event.preventDefault(); send()">
+      <textarea
+        name="text"
+        [(ngModel)]="text"
+        rows="3"
+        placeholder="Skriv ett meddelande…"
+        autocomplete="off"
+        [disabled]="recording"
+        (input)="autoGrow($event)"
+      ></textarea>
+
+      <div class="actions" role="group" aria-label="Skicka och röst">
+        <label class="attach small" title="Bifoga (bilder/PDF)" aria-label="Bifoga filer">
+          📎
+          <input type="file" hidden multiple accept="image/*,application/pdf" (change)="onFilesSelected($event)" />
+        </label>
+
+        <button type="submit" [disabled]="sending || recording">{{ sending ? 'Skickar…' : 'Skicka' }}</button>
+
+        <button type="button" class="small" (click)="openCapture()" [disabled]="sending || recording" aria-label="Fånga tanke" title="Fånga tanke">📝</button>
+
+        <button
+          type="button"
+          class="mic"
+          [class.isRecording]="recording"
+          (pointerdown)="onMicPointerDown($event)"
+          (pointerup)="onMicPointerUp($event)"
+          (pointercancel)="onMicPointerCancel($event)"
+          (pointerleave)="onMicPointerLeave($event)"
+          [disabled]="sending"
+          [attr.aria-label]="recording ? 'Släpp för att skicka inspelningen' : 'Håll inne för att prata'"
+          [attr.title]="recording ? 'Släpp för att skicka' : 'Håll inne för att prata'"
+        >
+          <span class="micIcon">{{ recording ? '🎙️' : '🎤' }}</span>
+          <span class="micText">{{ recording ? 'Släpp' : 'Håll inne' }}</span>
+        </button>
+      </div>
+    </form>
+
+    <div class="recordOverlay" *ngIf="recording">
+      <div class="inner">
+        <div class="dot"></div>
+        <div class="txt">Spelar in… släpp för att skicka</div>
+      </div>
+    </div>
+
+    <div class="recordHint" *ngIf="recordStatus">{{ recordStatus }}</div>
+    <div class="recordHint" *ngIf="uploadInfo">{{ uploadInfo }}</div>
+
+    <div class="modalBackdrop" *ngIf="showCapture" (click)="closeCapture()"></div>
+    <div class="modal" *ngIf="showCapture" role="dialog" aria-modal="true" aria-label="Fånga tanke" (click)="$event.stopPropagation()">
+      <div class="modalHeader">
+        <div class="modalTitle">Fånga tanke</div>
+        <button type="button" class="iconBtn" (click)="closeCapture()" aria-label="Stäng">×</button>
+      </div>
+
+      <textarea
+        class="captureText"
+        [(ngModel)]="captureText"
+        rows="6"
+        placeholder="Prata eller skriv… (sparas till Obsidian inbox)"
+        [disabled]="captureSaving || captureRecording"
+      ></textarea>
+
+      <div class="modalActions">
+        <button type="button" class="mic" [class.isRecording]="captureRecording" (click)="toggleCaptureRecording()" [disabled]="captureSaving">
+          <span class="micIcon">{{ captureRecording ? '🎙️' : '🎤' }}</span>
+          <span class="micText">{{ captureRecording ? 'Stoppa' : 'Spela in' }}</span>
+        </button>
+
+        <button type="button" (click)="saveCapture()" [disabled]="captureSaving || !captureText.trim()">{{ captureSaving ? 'Sparar…' : 'Spara i inbox' }}</button>
+        <button type="button" class="small" (click)="closeCapture()" [disabled]="captureSaving">Avbryt</button>
+      </div>
+
+      <div class="muted" style="margin-top:8px" *ngIf="captureStatus">{{ captureStatus }}</div>
+    </div>
+
+    <div class="pending" *ngIf="pendingFiles.length > 0">
+      <div class="chip" *ngFor="let f of pendingFiles; let i = index">
+        <span class="name">{{ f.name }}</span>
+        <button type="button" class="x" (click)="removePendingFile(i)" aria-label="Ta bort">×</button>
+      </div>
+    </div>
+  </section>
+</main>

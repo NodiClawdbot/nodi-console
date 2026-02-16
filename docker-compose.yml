@@ -1,0 +1,31 @@
+services:
+  backend:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      - OPENCLAW_URL=${OPENCLAW_URL:-ws://host.docker.internal:18790}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - OPENCLAW_ORIGIN=${OPENCLAW_ORIGIN:-https://nodimacmini.tail183522.ts.net}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Mount the vault into the container if you want to write notes/files.
+      - VAULT_PATH=/vault
+      # Default inbox rel path (can be changed later)
+      - INBOX_NOTE_REL=${INBOX_NOTE_REL:-00_🕸️_Inbox/Nodi Inbox.md}
+    volumes:
+      - ${OBSIDIAN_VAULT_PATH:-/dev/null}:/vault
+    ports:
+      - "5300:5300"
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      - BACKEND_BASE_URL=${BACKEND_BASE_URL:-http://localhost:5300}
+    ports:
+      - "4300:4200"
+    depends_on:
+      - backend
