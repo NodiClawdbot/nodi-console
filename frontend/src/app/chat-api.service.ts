@@ -22,6 +22,19 @@ type InboxCaptureResponse = {
   summary?: string;
 };
 
+type OpsLatestResponse = {
+  ok: boolean;
+  line?: string | null;
+  note?: string;
+};
+
+type ApprovalsSummaryResponse = {
+  ok: boolean;
+  pending: number;
+  approved: number;
+  note?: string;
+};
+
 function backendBaseUrl(): string {
   const host = window.location.hostname || 'localhost';
   if (host === 'localhost' || host === '127.0.0.1') {
@@ -91,5 +104,23 @@ export class ChatApiService {
     }
 
     return (await res.json()) as InboxCaptureResponse;
+  }
+
+  async opsLatest(): Promise<OpsLatestResponse> {
+    const res = await fetch(`${this.baseUrl}/api/ops/latest`);
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(`Ops latest error ${res.status}: ${t || res.statusText}`);
+    }
+    return (await res.json()) as OpsLatestResponse;
+  }
+
+  async approvalsSummary(): Promise<ApprovalsSummaryResponse> {
+    const res = await fetch(`${this.baseUrl}/api/approvals/summary`);
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(`Approvals summary error ${res.status}: ${t || res.statusText}`);
+    }
+    return (await res.json()) as ApprovalsSummaryResponse;
   }
 }

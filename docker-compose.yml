@@ -13,6 +13,8 @@ services:
       - VAULT_PATH=/vault
       # Default inbox rel path (can be changed later)
       - INBOX_NOTE_REL=${INBOX_NOTE_REL:-00_🕸️_Inbox/Nodi Inbox.md}
+      - OPS_STATUS_NOTE_REL=${OPS_STATUS_NOTE_REL:-🤖 Ops status.md}
+      - ROUTING_NOTE_REL=${ROUTING_NOTE_REL:-🤖 Nodi routing (förslag).md}
     volumes:
       - ${OBSIDIAN_VAULT_PATH:-/dev/null}:/vault
     ports:

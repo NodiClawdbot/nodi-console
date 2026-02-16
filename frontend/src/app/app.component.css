@@ -1,6 +1,12 @@
 .wrap { max-width: 900px; margin: 24px auto; padding: 0 16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: var(--bg); color: var(--text); height: 100dvh; display:flex; flex-direction:column; }
 .top { display:flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
 .topRight { display:flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.panelTabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.panelTabs .small.active{background: var(--accent); color: var(--accentText); border-color: var(--accent);}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:rgba(127,127,127,0.18);font-size:12px;margin-left:6px}
+.panel{border:1px solid var(--borderSoft);border-radius:12px;padding:12px;background:var(--surface);margin-top:12px}
+.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; white-space: pre-wrap;}
+
 .modeToggle { display:flex; gap: 6px; }
 .modeToggle .small { font-size: 12px; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--borderSoft); background: var(--surface); color: var(--text); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
 .modeToggle .small.active { background: var(--accent); color: var(--accentText); border-color: var(--accent); }

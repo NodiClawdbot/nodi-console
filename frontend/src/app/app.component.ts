@@ -9,6 +9,8 @@ import { VoiceApiService } from './voice-api.service';
 
 type Msg = { at: string; from: string; text: string };
 
+type Panel = 'voice' | 'approvals' | 'ops';
+
 type VoiceMode = 'walkietalki' | 'silentchat';
 
 type TtsVoice = 'alloy' | 'nova' | 'shimmer' | 'echo' | 'fable' | 'onyx';
@@ -25,6 +27,15 @@ type ThemeMode = 'auto' | 'light' | 'dark';
 export class AppComponent implements AfterViewInit {
   private mdConfigured = false;
   status = 'ready';
+
+  // Console panels
+  panel: Panel = 'voice';
+  approvalsPending: number | null = null;
+  approvalsApproved: number | null = null;
+  approvalsNote: string | null = null;
+  opsLatest: string | null = null;
+  opsNote: string | null = null;
+  panelError: string | null = null;
   text = '';
   messages: Msg[] = [];
   sending = false;
@@ -95,6 +106,18 @@ export class AppComponent implements AfterViewInit {
     }
     this.updateEffectiveTheme();
     this.applyTheme();
+
+    // Prefetch counts for badges.
+    void this.chatApi.approvalsSummary().then((r) => {
+      this.approvalsPending = r.pending;
+      this.approvalsApproved = r.approved;
+      this.approvalsNote = r.note || null;
+    }).catch(() => {});
+
+    void this.chatApi.opsLatest().then((r) => {
+      this.opsLatest = r.line ?? null;
+      this.opsNote = r.note || null;
+    }).catch(() => {});
   }
 
   async send() {
@@ -538,6 +561,32 @@ export class AppComponent implements AfterViewInit {
     window.localStorage.setItem('ncb.theme', next);
     this.updateEffectiveTheme();
     this.applyTheme();
+  }
+
+  async selectPanel(p: Panel) {
+    this.panel = p;
+    this.panelError = null;
+
+    if (p === 'ops') {
+      try {
+        const res = await this.chatApi.opsLatest();
+        this.opsLatest = res.line ?? null;
+        this.opsNote = res.note || null;
+      } catch (e: any) {
+        this.panelError = String(e?.message ?? e);
+      }
+    }
+
+    if (p === 'approvals') {
+      try {
+        const res = await this.chatApi.approvalsSummary();
+        this.approvalsPending = res.pending;
+        this.approvalsApproved = res.approved;
+        this.approvalsNote = res.note || null;
+      } catch (e: any) {
+        this.panelError = String(e?.message ?? e);
+      }
+    }
   }
 
   ngAfterViewInit(): void {

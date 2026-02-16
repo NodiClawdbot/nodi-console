@@ -419,6 +419,83 @@ app.MapPost("/api/inbox/capture", async (IConfiguration cfg, InboxCaptureRequest
     return Results.Ok(new { ok = true, file = rel.Replace('\\', '/'), title, summary });
 });
 
+static string VaultRoot(IConfiguration cfg) => cfg["OBSIDIAN_VAULT_PATH"] ?? cfg["VAULT_PATH"] ?? "/vault";
+
+static string? SafeReadNote(IConfiguration cfg, string rel)
+{
+    try
+    {
+        var vault = VaultRoot(cfg);
+        if (string.IsNullOrWhiteSpace(vault) || !Directory.Exists(vault)) return null;
+        var p = Path.Combine(vault, rel);
+        if (!File.Exists(p)) return null;
+        return File.ReadAllText(p);
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+static string? ExtractFirstBulletUnder(string text, string heading)
+{
+    var lines = text.Replace("\r", "").Split('\n');
+    var inSection = false;
+
+    for (var i = 0; i < lines.Length; i++)
+    {
+        var line = lines[i].TrimEnd();
+        if (line.Trim().Equals(heading, StringComparison.OrdinalIgnoreCase))
+        {
+            inSection = true;
+            continue;
+        }
+        if (inSection && line.StartsWith("## ")) break;
+        if (!inSection) continue;
+
+        var t = line.TrimStart();
+        if (t.StartsWith("- ")) return t[2..].Trim();
+    }
+
+    return null;
+}
+
+app.MapGet("/api/ops/latest", (IConfiguration cfg) =>
+{
+    var rel = cfg["OPS_STATUS_NOTE_REL"] ?? "🤖 Ops status.md";
+    var txt = SafeReadNote(cfg, rel);
+    if (string.IsNullOrWhiteSpace(txt)) return Results.Ok(new { ok = true, line = (string?)null, note = rel });
+
+    var line = ExtractFirstBulletUnder(txt, "## Senaste check");
+    return Results.Ok(new { ok = true, line, note = rel });
+});
+
+app.MapGet("/api/approvals/summary", (IConfiguration cfg) =>
+{
+    var rel = cfg["ROUTING_NOTE_REL"] ?? "🤖 Nodi routing (förslag).md";
+    var txt = SafeReadNote(cfg, rel);
+    if (string.IsNullOrWhiteSpace(txt))
+        return Results.Ok(new { ok = true, pending = 0, approved = 0, note = rel });
+
+    var pending = 0;
+    var approved = 0;
+    var lines = txt.Replace("\r", "").Split('\n');
+    var inApprove = false;
+
+    foreach (var ln in lines)
+    {
+        var t = ln.Trim();
+        if (t.StartsWith("## Godkänn", StringComparison.OrdinalIgnoreCase)) { inApprove = true; continue; }
+        if (inApprove && t.StartsWith("## ")) break;
+        if (!inApprove) continue;
+
+        if (t.StartsWith("- [ ]")) pending++;
+        else if (t.StartsWith("- [x]", StringComparison.OrdinalIgnoreCase)) approved++;
+    }
+
+    return Results.Ok(new { ok = true, pending, approved, note = rel });
+});
+
 app.MapHub<ChatHub>("/hub/chat");
 
 app.Run("http://0.0.0.0:5300");

@@ -1,7 +1,16 @@
 <main class="wrap">
   <header class="top">
-    <div class="title">nodi-clawdbot</div>
+    <div class="title">nodi-console</div>
     <div class="muted">Status: {{ status }}</div>
+
+    <nav class="panelTabs" role="tablist" aria-label="Paneler">
+      <button type="button" class="small" [class.active]="panel==='voice'" (click)="selectPanel('voice')" role="tab" [attr.aria-selected]="panel==='voice'">Voice</button>
+      <button type="button" class="small" [class.active]="panel==='approvals'" (click)="selectPanel('approvals')" role="tab" [attr.aria-selected]="panel==='approvals'">
+        Approvals
+        <span class="badge" *ngIf="approvalsPending !== null">{{ approvalsPending }}</span>
+      </button>
+      <button type="button" class="small" [class.active]="panel==='ops'" (click)="selectPanel('ops')" role="tab" [attr.aria-selected]="panel==='ops'">Ops</button>
+    </nav>
 
     <div class="topRight">
       <div class="modeToggle" role="radiogroup" aria-label="Svarsläge">
@@ -67,7 +76,7 @@
     </div>
   </section>
 
-  <section class="chat">
+  <section class="chat" *ngIf="panel === 'voice'">
     <div class="messages">
       <div class="msg" *ngFor="let m of messages" [class.me]="m.from === 'you'" [class.system]="m.from === 'system'" [class.nodi]="m.from !== 'you' && m.from !== 'system'">
         <div class="meta">
@@ -75,7 +84,6 @@
           <span class="from">{{ m.from }}</span>
         </div>
 
-        <!-- Render markdown for non-user messages (e.g. Obsidian content). -->
         <div class="text md" *ngIf="m.from !== 'you'" [innerHTML]="renderMarkdown(m.text)"></div>
         <div class="text" *ngIf="m.from === 'you'">{{ m.text }}</div>
       </div>
@@ -163,6 +171,33 @@
       <div class="chip" *ngFor="let f of pendingFiles; let i = index">
         <span class="name">{{ f.name }}</span>
         <button type="button" class="x" (click)="removePendingFile(i)" aria-label="Ta bort">×</button>
+      </div>
+    </div>
+
+    <div class="card" *ngIf="panelError">
+      <b>Fel:</b> {{ panelError }}
+    </div>
+  </section>
+
+  <section class="panel" *ngIf="panel === 'approvals'">
+    <div class="card">
+      <h2>Approvals</h2>
+      <div class="muted">Källa: <code>{{ approvalsNote || '—' }}</code></div>
+      <ul>
+        <li>Pending: <b>{{ approvalsPending === null ? '—' : approvalsPending }}</b></li>
+        <li>Approved: <b>{{ approvalsApproved === null ? '—' : approvalsApproved }}</b></li>
+      </ul>
+      <div class="muted">Tips: kryssa i rader i Obsidian så körs de vid nästa dispatch (07:20 / 11:30 / 17:00).</div>
+    </div>
+  </section>
+
+  <section class="panel" *ngIf="panel === 'ops'">
+    <div class="card">
+      <h2>Ops</h2>
+      <div class="muted">Källa: <code>{{ opsNote || '—' }}</code></div>
+      <div style="margin-top:8px">
+        <div><b>Senaste:</b></div>
+        <div class="mono">{{ opsLatest || '—' }}</div>
       </div>
     </div>
   </section>
